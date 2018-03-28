@@ -47,7 +47,7 @@ class Cliente(threading.Thread):
                     terminar = True
 
     def datos(self):
-        user = input("Introduzca el username: ")
+        user = input("\nIntroduzca el username: ")
         passw = input("Introduzca la password: ")
         return user, passw
 

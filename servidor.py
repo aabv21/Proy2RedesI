@@ -10,30 +10,9 @@
 
 from xmlrpc.server import SimpleXMLRPCServer
 import xmlrpc.client
-import sys, json, os, threading
-
-class Servidor(threading.Thread):
-    def __init__(self):
-        threading.Thread.__init__(self)
-
-class ServidorCentral(threading.Thread):
-    def __init__(self):
-        threading.Thread.__init__(self)
-
-    def consolaServidorCentral():
-        terminar = False
-        while not (terminar):
-            print("1) LibrosDescargadosxServidor \n2) Nro. De clientes atendidos \n3) Servidores Caídos \n0) Salir")
-            opcion = int(input(">>> "))
-            if 0 <= opcion <= 3:
-                if opcion == 1:
-                    print("LibrosDescargadosxServidor\n")
-                elif opcion == 2:
-                    print("Nro. De clientes atendidos\n")
-                elif opcion == 3:
-                    print("Servidores Caídos\n")
-                else:
-                    terminar = True
+import sys, json, os
+import threading
+from _thread import *
 
 class Cliente():
 
@@ -72,6 +51,21 @@ class Cliente():
             json.dump(data, f, indent=4)
         return True
 
+def consolaServidorCentral():
+    terminar = False
+    while not (terminar):
+        print("1) LibrosDescargadosxServidor \n2) Nro. De clientes atendidos \n3) Servidores Caídos \n0) Salir")
+        opcion = int(input(">>> "))
+        if 0 <= opcion <= 3:
+            if opcion == 1:
+                print("LibrosDescargadosxServidor\n")
+            elif opcion == 2:
+                print("Nro. De clientes atendidos\n")
+            elif opcion == 3:
+                print("Servidores Caídos\n")
+            else:
+                terminar = True
+
 # Crea los archivos del servidor
 def crearArchivos():
     with open('inscripciones.json', 'a+') as f:
@@ -83,22 +77,17 @@ def crearArchivos():
 ### Corrida del programa
 if __name__ == '__main__':
     puerto = 8000
-    server = SimpleXMLRPCServer(("localhost", puerto)) #Servidor Central
+    server = SimpleXMLRPCServer(("localhost", puerto), logRequests = False) #Servidor Central
 
     crearArchivos()
 
     server.register_instance(Cliente())
     server.register_introspection_functions()
-    #server.register_multicall_functions()
-    #server.register_function(add)
-    sc = ServidorCentral()
-    sc.start()
+    start_new_thread(consolaServidorCentral, ())
 
-    server.serve_forever()
-
-    print("Esperando peticiones por el puerto: "+str(puerto))
     try:
         server.serve_forever()
+        #sc.consolaServidorCentral()
     except KeyboardInterrupt:
         print('Saliendo')
     
