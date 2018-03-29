@@ -14,13 +14,24 @@ import sys, json, os
 import threading
 from _thread import *
 
-class Cliente():
+class ServidorCentral():
 
     # Funcion prueba de xml-rpc
     def add(self, x, y):
         return x + y
 
-    def listaDeLibros(self):
+    def solicitarListaServidores(self):
+        pass
+
+    def registrarServidores(self, direccion, puerto):
+        with open('servidoresDescargas.json', 'r+') as f:
+            data = json.load(f)
+            f.seek(0)
+            data["Registro"].append({'direccion': direccion, 'password': puerto})
+            json.dump(data, f, indent=4)
+        return True
+
+    def registrarLibros(self):
         pass
 
     # Verifica si el cliente ya se encuentra en la base de datos
@@ -74,6 +85,12 @@ def crearArchivos():
             data['Registro'] = []
             json.dump(data, f)
 
+    with open('servidoresDescargas.json', 'a+') as f:
+        if os.stat('servidoresDescargas.json').st_size == 0:
+            data = {}
+            data['Registro'] = []
+            json.dump(data, f)
+
 ### Corrida del programa
 if __name__ == '__main__':
     puerto = 8000
@@ -81,13 +98,12 @@ if __name__ == '__main__':
 
     crearArchivos()
 
-    server.register_instance(Cliente())
+    server.register_instance(ServidorCentral())
     server.register_introspection_functions()
     start_new_thread(consolaServidorCentral, ())
 
     try:
         server.serve_forever()
-        #sc.consolaServidorCentral()
     except KeyboardInterrupt:
         print('Saliendo')
     

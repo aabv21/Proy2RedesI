@@ -12,11 +12,10 @@ from xmlrpc.server import SimpleXMLRPCServer
 import xmlrpc.client
 import socket, threading, time
 
-class Cliente(threading.Thread):
+class Cliente():
 
-    def __init__(self, cliente):
-        threading.Thread.__init__(self)
-        self.cliente = cliente
+    def __init__(self, servidor):
+        self.servidor = servidor
         self.logueado = False
 
     def login(self):
@@ -27,7 +26,7 @@ class Cliente(threading.Thread):
             if 0 <= opcion <= 2:
                 if opcion == 1:
                     user, passw = self.datos()
-                    todo_bien = self.cliente.consultarlogin(user, passw)
+                    todo_bien = self.servidor.consultarlogin(user, passw)
                     if todo_bien:
                         print("Usted se ha logueado :)\n")
                         self.logueado = True
@@ -36,9 +35,9 @@ class Cliente(threading.Thread):
 
                 elif opcion == 2:
                     user, passw = self.datos()
-                    todo_bien = self.cliente.consultarRegistro(user)
+                    todo_bien = self.servidor.consultarRegistro(user)
                     if not(todo_bien):
-                        listo = self.cliente.inscribirse(user, passw)
+                        listo = self.servidor.inscribirse(user, passw)
                         print("El usuario " + str(user) + " se ha registrado exitosamente\n")
                     else:
                         print("El username "+str(user)+" ya se encuentra en la base de datos\n")
@@ -58,15 +57,16 @@ class Cliente(threading.Thread):
             opcion = int(input(">>> "))
             if 0 <= opcion <= 2:
                 if opcion == 1:
-                    print("LISTA_LIBROS ")
+                    lista = self.servidor.solicitarListaServidores()
+                    print(lista)
                 elif opcion == 2:
                     print("SOLICITUD libro")
                 else:
                     terminar = True
 
     def hacerOperaciones(self):
-        print(self.cliente.add(3, 2))
-        print(self.cliente.system.listMethods())
+        print(self.servidor.add(3, 2))
+        print(self.servidor.system.listMethods())
 
 
 def datosDelServidor():
@@ -84,7 +84,6 @@ if __name__ == '__main__':
     instancia = conectar('http://localhost:8000')
 
     cliente = Cliente(instancia)
-    cliente.start()
     cliente.login()
 
 
