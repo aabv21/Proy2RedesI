@@ -48,7 +48,7 @@ class Servidor():
                 else:
                     terminar = True
 
-    # Registrar los libros descargados
+    # Registrar los libros descargados (No probado)
     def RegistrarLibrosDescargados(self, archivo):
 
         match = False
@@ -71,11 +71,40 @@ class Servidor():
                 break
             else:
                 cont += 1
-        if match == False:
+        if not(match):
             with open('librosDescargados.json', 'r+') as f:
                 data = json.load(f)
                 f.seek(0)
                 data["Descargas"].append({'archivo': archivo, 'numero': '1'})
+                json.dump(data, f, indent=4)
+
+    # Para registrar los clientes que mas han solicitado (No probado)
+    def RegistrarClientesQueSolicitan(self, user, direccion):
+        match = False
+        cont = 0
+        with open('SolicitudesClientes.json' ,'r') as archivo:
+            info = json.load(archivo)
+
+        for i in info['Clientes']:
+            if i['nombre'] == user and i['direccion'] = direccion:
+                aux = int(i['numero'])
+                aux += 1
+                dicc = {'nombre': user, 'direccion': direccion, 'numero': str(aux)}
+                with open('SolicitudesClientes.json', 'r+') as f:
+                    data = json.load(f)
+                    f.seek(0)
+                    data["Clientes"].pop(cont)
+                    data["Clientes"].append(dicc)
+                    json.dump(data, f, indent=4)
+                match = True
+                break
+            else:
+                cont += 1
+        if not(match):
+            with open('SolicitudesClientes.json', 'r+') as f:
+                data = json.load(f)
+                f.seek(0)
+                data["Descargas"].append({'nombre': user, 'direccion': direccion, 'numero': '1'})
                 json.dump(data, f, indent=4)
 
     # Ver en pantalla los libros descargados y en que cantidad

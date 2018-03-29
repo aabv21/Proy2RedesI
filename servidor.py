@@ -112,8 +112,8 @@ class ServidorCentral():
         with open('ClientesAtendidos.json' ,'r') as archivo:
             info = json.load(archivo)
 
-        for i in info['Clientes']:
-            print("%s     %s" % (i['nombre'], i['numero']))
+        for i in info['Servidores']:
+            print("%s     %s" % (i['direccion'], i['numero']))
 
     def VerServidoresCaidos(self):
         with open('ServidoresCaidos.json' ,'r') as archivo:
@@ -168,7 +168,7 @@ def crearArchivos():
     with open('ClientesAtendidos.json', 'a+') as f:
         if os.stat('ClientesAtendidos.json').st_size == 0:
             data = {}
-            data['Clientes'] = []
+            data['Servidores'] = []
             json.dump(data, f)
 
     with open('ServidoresCaidos.json', 'a+') as f:
