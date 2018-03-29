@@ -14,13 +14,17 @@ import socket, threading, time
 
 class Cliente():
 
-    def __init__(self, servidor):
+    def __init__(self, servidor, direccion):
         self.servidor = servidor
         self.logueado = False
+        self.user = ""
+        self.passw = ""
+        self.name = ""
+        self.direccion = direccion
 
     def login(self):
         terminar = False
-        while not(terminar):
+        while not(terminar) and not(self.logueado):
             print("1) Loguearse \n2) Registrarse \n0) Salir")
             opcion = int(input(">>> "))
             if 0 <= opcion <= 2:
@@ -28,6 +32,9 @@ class Cliente():
                     user, passw = self.datos()
                     todo_bien = self.servidor.consultarlogin(user, passw)
                     if todo_bien:
+                        self.user, self.passw = user, passw
+                        self.name = socket.gethostname()
+                        self.direccion = socket.gethostbyname(self.name)
                         print("Usted se ha logueado :)\n")
                         self.logueado = True
                     else:
@@ -60,7 +67,8 @@ class Cliente():
                     lista = self.servidor.solicitarListaServidores()
                     print(lista)
                 elif opcion == 2:
-                    print("SOLICITUD libro")
+                    filename = input("Escriba el nombre del archivo: ")
+                    todo_bien = self.servidor.pedirLibro(filename, self.name, self.direccion)
                 else:
                     terminar = True
 
@@ -79,12 +87,14 @@ def conectar(ip):
 
 ### Corrida del programa
 if __name__ == '__main__':
+    ip = input("Introduce la direccion su direccion publica: ")
 
     #ip_server = datosDelServidor()
-    instancia = conectar('http://localhost:8000')
+    instancia = conectar('http://192.168.1.140:8000')
 
-    cliente = Cliente(instancia)
+    cliente = Cliente(instancia, ip)
     cliente.login()
+    cliente.consola()
 
 
  
