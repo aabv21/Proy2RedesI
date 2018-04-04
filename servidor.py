@@ -20,7 +20,7 @@ class ServidorCentral():
         self.servidores_descarga = []
 
     # conectarse con el servidor de descarga
-    def conectar_setvidores_descarga(ip):
+    def conectar_servidores_descarga(self, ip):
         servidor = xmlrpc.client.ServerProxy("http://"+ip) # Me comporto como cliente y me conecto con servidor de descarga
         return servidor
 
@@ -35,7 +35,6 @@ class ServidorCentral():
     # Registra los servidores conectados en un .json y en un arreglo
     def registrarServidores(self, direccion, puerto):
         match = False
-        match2 = False
         with open('servidoresDescargas.json', 'r+') as f:
             data = json.load(f)
 
@@ -47,8 +46,8 @@ class ServidorCentral():
             if not(match):
                 f.seek(0)
                 data["Registro"].append({'direccion': direccion, 'puerto': puerto})
-                self.servidores_descarga.append(direccion+":"+puerto)
                 json.dump(data, f, indent=4)
+        self.servidores_descarga.append(direccion+":"+str(puerto))
         return True
 
     # Registra los libros que posee un servidor descarga en la base de datos del servidor central
@@ -116,11 +115,13 @@ class ServidorCentral():
     # Solicita un libro
     def pedirLibro(self, filename, direccion_cliente):
 
-        user = conseguirUserCliente(direccion_cliente)
-
-        for i in servidores_descarga:
-            servidor = conectar(i) # conexion con el servidor descarga
-            binary_pdf, direccion_servidor = servidor.leer_pdf(filename, user, direccion_cliente) #binary data del pdf traido por el servidor descarga
+        #user = conseguirUserCliente(direccion_cliente)
+        #print(self.servidores_descarga)
+        for i in self.servidores_descarga:
+            #print(i)
+            servidor = self.conectar_servidores_descarga(i) # conexion con el servidor descarga
+            #binary_pdf, direccion_servidor = servidor.leer_pdf(filename, user, direccion_cliente) #binary data del pdf traido por el servidor descarga
+            binary_pdf, direccion_servidor = servidor.leer_pdf(filename, direccion_cliente) #binary data del pdf traido por el servidor descarga
             self.registrarLibrosDescargadosXServidor(direccion_servidor, filename)
             self.registrarClientesAtendidos(direccion_servidor)
             return binary_pdf
@@ -185,15 +186,15 @@ class ServidorCentral():
     def registrarClientesAtendidos(self, direccion):
         match = False
         cont = 0
-        with open('ServidoresCaidos.json', 'r+') as f:
+        with open('ClientesAtendidos.json', 'r+') as f:
             info = json.load(f)
 
             for i in info['Servidores']:
                 if i['direccion'] == direccion:
                     aux = int(i['numero'])
                     aux += 1
-                    dicc = {'direccion': libro, 'numero': str(aux)}
-                    with open('ServidoresCaidos.json', 'r+') as f:
+                    dicc = {'direccion': direccion, 'numero': str(aux)}
+                    with open('ClientesAtendidos.json', 'r+') as f:
                         data = json.load(f)
                         f.seek(0)
                         data["Servidores"].pop(cont)
@@ -205,7 +206,7 @@ class ServidorCentral():
                     cont += 1
 
         if match == False:
-            with open('ServidoresCaidos.json', 'r+') as f:
+            with open('ClientesAtendidos.json', 'r+') as f:
                 data = json.load(f)
                 f.seek(0)
                 data["Servidores"].append({'direccion': direccion, 'numero': '1'})
@@ -215,7 +216,7 @@ class ServidorCentral():
     def registrarServidoresCaidos(self, direccion):
         match = False
         cont = 0
-        with open('ClientesAtendidos.json', 'r+') as f:
+        with open('ServidoresCaidos.json', 'r+') as f:
             info = json.load(f)
 
             for i in info['Caidos']:
@@ -223,7 +224,7 @@ class ServidorCentral():
                     aux = int(i['numero'])
                     aux += 1
                     dicc = {'direccion': direccion, 'numero': str(aux)}
-                    with open('ClientesAtendidos.json', 'r+') as f:
+                    with open('ServidoresCaidos.json', 'r+') as f:
                         data = json.load(f)
                         f.seek(0)
                         data["Caidos"].pop(cont)
@@ -235,7 +236,7 @@ class ServidorCentral():
                     cont += 1
 
         if match == False:
-            with open('ClientesAtendidos.json', 'r+') as f:
+            with open('ServidoresCaidos.json', 'r+') as f:
                 data = json.load(f)
                 f.seek(0)
                 data["Caidos"].append({'direccion': direccion, 'numero': '1'})

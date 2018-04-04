@@ -20,7 +20,7 @@ class Cliente():
         self.user = ""
         self.passw = ""
         #self.name = ""
-        self.mi_direccion = direccion
+        self.direccion = direccion
 
     # loguearse en el servidor
     def login(self):
@@ -72,7 +72,7 @@ class Cliente():
                 elif opcion == 2:
                     filename = input("Escriba el nombre del archivo: ")
                     pdf_binary = self.servidor_central.pedirLibro(filename, self.direccion)
-                    recibir_pdf(pdf_binary, filename)
+                    self.recibir_pdf(pdf_binary, filename)
                 else:
                     terminar = True
 

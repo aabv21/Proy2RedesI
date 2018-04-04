@@ -12,7 +12,7 @@ import xmlrpc.client
 import socket, os
 from _thread import *
 import json
-display = threading.Event()
+#display = threading.Event()
 
 #
 class Servidor():
@@ -54,8 +54,8 @@ class Servidor():
 
         match = False
         cont = 0
-        with open('librosDescargados.json' ,'r') as archivo:
-            info = json.load(archivo)
+        with open('librosDescargados.json' ,'r') as f:
+            info = json.load(f)
 
         for i in info['Descargas']:
             if i['archivo'] == archivo:
@@ -83,11 +83,11 @@ class Servidor():
     def registrarClientesQueSolicitan(self, user, direccion):
         match = False
         cont = 0
-        with open('SolicitudesClientes.json' ,'r') as archivo:
-            info = json.load(archivo)
+        with open('SolicitudesClientes.json' ,'r') as f:
+            info = json.load(f)
 
         for i in info['Clientes']:
-            if i['nombre'] == user and i['direccion'] = direccion:
+            if i['nombre'] == user and i['direccion'] == direccion:
                 aux = int(i['numero'])
                 aux += 1
                 dicc = {'nombre': user, 'direccion': direccion, 'numero': str(aux)}
@@ -125,21 +125,24 @@ class Servidor():
             print("%s     %s      %s" % (i['nombre'], i['direccion'], i['numero']))
 
     # Abrir el archivo .pdf en formato rbs
-    def leer_pdf(self, filename, user, direccion_cliente, fileoption="rb"):
+    #def leer_pdf(self, filename, user, direccion_cliente, fileoption="rb"):
+    def leer_pdf(self, filename, direccion_cliente, fileoption="rb"):
+        print("holaaaa")
         try:
             with open(filename, fileoption) as f:
                 data = f.read()
-                return self.descargar_pdf(data, filename, user, direccion_cliente)
+                #return self.descargar_pdf(data, filename, user, direccion_cliente)
+                return self.descargar_pdf(data, filename, direccion_cliente)
         except Exception as ex:
             print(ex)
             print('Error al leer el archivo')
 
     # Transferirir el binary data del pdf al servidor central
-    def descargar_pdf(self, data, filename):
+    def descargar_pdf(self, data, filename, direccion):
 
-        binary_data =  xmlrpc.Binary(data)
+        binary_data =  xmlrpc.client.Binary(data)
         self.registrarLibrosDescargados(filename)
-        self.registrarClientesQueSolicitan(user, direccion)
+        #self.registrarClientesQueSolicitan(user, direccion)
         return binary_data, self.direccion
 
     #def descargar_pdf(self, contenido, offset, nombre_libro):
@@ -191,6 +194,7 @@ if __name__ == '__main__':
     ip = input("Introduce la direccion ip publica del servidor de descarga: ")
     instancia = conectar('http://192.168.1.140:8000') # Me comporto como cliente y me conecto con el servidor central
     server = SimpleXMLRPCServer((ip, puerto), logRequests = False) # Me levanto como servidor (servidor de descarga)
+    server.register_instance(Servidor(instancia, ip, puerto))
 
     crearArchivos()
 
