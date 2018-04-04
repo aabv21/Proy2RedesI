@@ -16,15 +16,26 @@ from _thread import *
 
 class ServidorCentral():
 
+    def __init__(self):
+        self.servidores_descarga = []
+
+    # conectarse con el servidor de descarga
+    def conectar_setvidores_descarga(ip):
+        servidor = xmlrpc.client.ServerProxy("http://"+ip) # Me comporto como cliente y me conecto con servidor de descarga
+        return servidor
+
+
     def solicitarListaServidores(self):
         pass
 
     #######
-    ### SERVIDOR DESCARGA
+    ### funciones que puede usar el SERVIDOR DESCARGA
     #######
 
+    # Registra los servidores conectados en un .json y en un arreglo
     def registrarServidores(self, direccion, puerto):
         match = False
+        match2 = False
         with open('servidoresDescargas.json', 'r+') as f:
             data = json.load(f)
 
@@ -36,9 +47,11 @@ class ServidorCentral():
             if not(match):
                 f.seek(0)
                 data["Registro"].append({'direccion': direccion, 'puerto': puerto})
+                self.servidores_descarga.append(direccion+":"+puerto)
                 json.dump(data, f, indent=4)
         return True
 
+    # Registra los libros que posee un servidor descarga en la base de datos del servidor central
     def registrarLibros(self, lista, direccion):
         match = False
         with open('servidoresLibros.json', 'r+') as f:
@@ -57,7 +70,7 @@ class ServidorCentral():
 
 
     #######
-    ### CLIENTE
+    ### funciones que puede usar el CLIENTE
     #######
 
     # Verifica si el cliente ya se encuentra en la base de datos
@@ -70,6 +83,7 @@ class ServidorCentral():
                 return True
         return False
 
+    # Verifica que los datos introducidos coinciden con el de la cuenta
     def consultarlogin(self, user, passw):
         with open('inscripciones.json', 'r') as archivo:
             info = json.load(archivo)
@@ -80,14 +94,15 @@ class ServidorCentral():
         return False
 
     # Registra el nuevo cliente
-    def inscribirse(self, user, passw):
+    def inscribirse(self, user, passw, direccion_cliente):
         with open('inscripciones.json', 'r+') as f:
             data = json.load(f)
             f.seek(0)
-            data["Registro"].append({'usuario': user, 'password': passw})
+            data["Registro"].append({'usuario': user, 'password': passw, 'direccion': direccion_cliente})
             json.dump(data, f, indent=4)
         return True
 
+    # Solicita la lista de libros de los servidores descargas a traves del servidor central
     def solicitarListaServidores(self):
         listado = "\n"
         with open('servidoresLibros.json' ,'r') as archivo:
@@ -98,9 +113,21 @@ class ServidorCentral():
 
         return listado
 
-    def pedirLibro(self, filename, name, ip_cliente):
-        pass
+    # Solicita un libro
+    def pedirLibro(self, filename, direccion_cliente):
 
+        user = conseguirUserCliente(direccion_cliente)
+
+        for i in servidores_descarga:
+            servidor = conectar(i) # conexion con el servidor descarga
+            binary_pdf, direccion_servidor = servidor.leer_pdf(filename, user, direccion_cliente) #binary data del pdf traido por el servidor descarga
+            self.registrarLibrosDescargadosXServidor(direccion_servidor, filename)
+            self.registrarClientesAtendidos(direccion_servidor)
+            return binary_pdf
+
+    # OPCIONES DE LA CONSOLA DEL SERVIDOR CENTRAL    
+
+    # Ver libros solicitados por cada servidor de descarga y el numero de veces que se ha descargado ese libro
     def VerLibrosDescargadosXServidor(self):
         with open('librosDescargadosxServidor.json' ,'r') as archivo:
             info = json.load(archivo)
@@ -108,6 +135,7 @@ class ServidorCentral():
         for i in info['Descargas']:
             print("%s     %s" % (i['libro'], i['numero']))
 
+    # Ver el numero de clientes atendidos por servidor de descarga
     def VerClientesAtendidos(self):
         with open('ClientesAtendidos.json' ,'r') as archivo:
             info = json.load(archivo)
@@ -115,12 +143,103 @@ class ServidorCentral():
         for i in info['Servidores']:
             print("%s     %s" % (i['direccion'], i['numero']))
 
+    # Ver cuantas veces se ha caido un servidor de desccarga
     def VerServidoresCaidos(self):
         with open('ServidoresCaidos.json' ,'r') as archivo:
             info = json.load(archivo)
 
         for i in info['Caidos']:
             print("%s     %s" % (i['direccion'], i['numero']))
+
+    #  Registrar los libros solicitados por cada servidor de descarga y el numero de veces que se ha descargado ese libro
+    def registrarLibrosDescargadosXServidor(self, direccion_servidor, libro):
+        match = False
+        cont = 0
+        with open('librosDescargadosxServidor.json', 'r+') as f:
+            info = json.load(f)
+
+            for i in info['Descargas']:
+                if i['libro'] == libro and i["direccion"] == direccion_servidor:
+                    aux = int(i['numero'])
+                    aux += 1
+                    dicc = {'libro': libro, "direccion": direccion_servidor, 'numero': str(aux)}
+                    with open('librosDescargadosxServidor.json', 'r+') as f:
+                        data = json.load(f)
+                        f.seek(0)
+                        data["Descargas"].pop(cont)
+                        data["Descargas"].append(dicc)
+                        json.dump(data, f, indent=4)
+                    match = True
+                    break
+                else:
+                    cont += 1
+
+        if match == False:
+            with open('librosDescargadosxServidor.json', 'r+') as f:
+                data = json.load(f)
+                f.seek(0)
+                data["Descargas"].append({'libro': libro, "direccion" : direccion_servidor, 'numero': '1'})
+                json.dump(data, f, indent=4)
+
+    #  Registrar los clientes atendidos por servidor de descarga
+    def registrarClientesAtendidos(self, direccion):
+        match = False
+        cont = 0
+        with open('ServidoresCaidos.json', 'r+') as f:
+            info = json.load(f)
+
+            for i in info['Servidores']:
+                if i['direccion'] == direccion:
+                    aux = int(i['numero'])
+                    aux += 1
+                    dicc = {'direccion': libro, 'numero': str(aux)}
+                    with open('ServidoresCaidos.json', 'r+') as f:
+                        data = json.load(f)
+                        f.seek(0)
+                        data["Servidores"].pop(cont)
+                        data["Servidores"].append(dicc)
+                        json.dump(data, f, indent=4)
+                    match = True
+                    break
+                else:
+                    cont += 1
+
+        if match == False:
+            with open('ServidoresCaidos.json', 'r+') as f:
+                data = json.load(f)
+                f.seek(0)
+                data["Servidores"].append({'direccion': direccion, 'numero': '1'})
+                json.dump(data, f, indent=4)
+
+    #  Registrar cuantas veces se ha caido un servidor de desccarga
+    def registrarServidoresCaidos(self, direccion):
+        match = False
+        cont = 0
+        with open('ClientesAtendidos.json', 'r+') as f:
+            info = json.load(f)
+
+            for i in info['Caidos']:
+                if i['direccion'] == direccion:
+                    aux = int(i['numero'])
+                    aux += 1
+                    dicc = {'direccion': direccion, 'numero': str(aux)}
+                    with open('ClientesAtendidos.json', 'r+') as f:
+                        data = json.load(f)
+                        f.seek(0)
+                        data["Caidos"].pop(cont)
+                        data["Caidos"].append(dicc)
+                        json.dump(data, f, indent=4)
+                    match = True
+                    break
+                else:
+                    cont += 1
+
+        if match == False:
+            with open('ClientesAtendidos.json', 'r+') as f:
+                data = json.load(f)
+                f.seek(0)
+                data["Caidos"].append({'direccion': direccion, 'numero': '1'})
+                json.dump(data, f, indent=4)
 
 
 # Consola del Servidor Central
@@ -141,36 +260,42 @@ def consolaServidorCentral(s):
 
 # Crea los archivos del servidor
 def crearArchivos():
+    # Base de datos de los clientes
     with open('inscripciones.json', 'a+') as f:
         if os.stat('inscripciones.json').st_size == 0:
             data = {}
             data['Registro'] = []
             json.dump(data, f)
 
+    # Base de datos de los servidores descargas
     with open('servidoresDescargas.json', 'a+') as f:
         if os.stat('servidoresDescargas.json').st_size == 0:
             data = {}
             data['Registro'] = []
             json.dump(data, f)
 
+    # Base de datos de libros pertenecientes a cada servidor descargas
     with open('servidoresLibros.json', 'a+') as f:
         if os.stat('servidoresLibros.json').st_size == 0:
             data = {}
             data['Registro'] = []
             json.dump(data, f)
 
+    # Base de datos de los libros solicitados por cada servidor y cuantas veces
     with open('librosDescargadosxServidor.json', 'a+') as f:
         if os.stat('librosDescargadosxServidor.json').st_size == 0:
             data = {}
             data['Descargas'] = []
             json.dump(data, f)
 
+    # Base de datos de los clientes atendidos
     with open('ClientesAtendidos.json', 'a+') as f:
         if os.stat('ClientesAtendidos.json').st_size == 0:
             data = {}
             data['Servidores'] = []
             json.dump(data, f)
 
+    # Base de datos de los servidores caidos
     with open('ServidoresCaidos.json', 'a+') as f:
         if os.stat('ServidoresCaidos.json').st_size == 0:
             data = {}
@@ -180,13 +305,13 @@ def crearArchivos():
 ### Corrida del programa
 if __name__ == '__main__':
     puerto = 8000
-    server = SimpleXMLRPCServer(("192.168.1.140", puerto), logRequests = False) #Servidor Central
+    server = SimpleXMLRPCServer(("192.168.1.140", puerto), logRequests = False) #Me levanto como un servidor (servidor central)
     #print(server.server_address)
 
     crearArchivos()
 
     server.register_instance(ServidorCentral())
-    server.register_introspection_functions()
+    #server.register_introspection_functions()
     s = ServidorCentral()
     start_new_thread(consolaServidorCentral, (s,))
 
