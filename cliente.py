@@ -19,7 +19,6 @@ class Cliente():
         self.logueado = False
         self.user = ""
         self.passw = ""
-        #self.name = ""
         self.direccion = direccion
 
     # loguearse en el servidor
@@ -34,9 +33,7 @@ class Cliente():
                     todo_bien = self.servidor_central.consultarlogin(user, passw)
                     if todo_bien:
                         self.user, self.passw = user, passw
-                        #self.name = socket.gethostname()
-                        #self.direccion = socket.gethostbyname(self.name)
-                        print("Usted se ha logueado :)\n")
+                        print("Usted se ha logueado :)")
                         self.logueado = True
                     else:
                         print("Usuario o password incorrecto\n")
@@ -63,28 +60,39 @@ class Cliente():
     def consola(self):
         terminar = False
         while not(terminar):
-            print("1) LISTA_LIBROS \n2) SOLICITUD libro \n0) Salir")
+            print("\n1) LISTA_LIBROS \n2) SOLICITUD libro \n0) Salir")
             opcion = int(input(">>> "))
             if 0 <= opcion <= 2:
                 if opcion == 1:
-                    lista = self.servidor_central.solicitarListaServidores() 
-                    print(lista)
+                    self.recibirListaLibros()
+
                 elif opcion == 2:
-                    filename = input("Escriba el nombre del archivo: ")
-                    pdf_binary = self.servidor_central.pedirLibro(filename, self.direccion)
-                    self.recibir_pdf(pdf_binary, filename)
+                    filename = input("Escriba el nombre del archivo: ") #Solicito el nombre del pdf (Debe llevar el .pdf)
+                    t = threading.Thread(target=self.recibirLibro, args=([filename]))
+                    t.start()
+
                 else:
                     terminar = True
 
+    # hilo encargado de la descarga del libro
+    def recibirLibro(self, filename):
+        size_parcial_libro = 0
+        pdf_binary_parcial, size_parcial_libro, size_total_libro = self.servidor_central.pedirLibro(filename, self.direccion, size_parcial_libro, self.user) #llamo a la funcion
+        self.escribir_pdf(pdf_binary_parcial, filename)
+        while size_parcial_libro < size_total_libro:
+            #print( str(size_parcial_libro) + " <<<<<<<<<<<< " + str(size_total_libro))
+            pdf_binary_parcial, size_parcial_libro, size_total_libro = self.servidor_central.pedirLibro(filename, self.direccion, size_parcial_libro, self.user)
+            self.escribir_pdf(pdf_binary_parcial, filename)
+
     # recibir el binary del pdf 
-    def recibir_pdf(self, pdf_binary, filename):
-        with open(filename, "wb") as f:
+    def escribir_pdf(self, pdf_binary, filename):
+        with open(filename, "ab") as f:
             f.write(pdf_binary.data)
 
-# Direccion del servidor
-def datosDelServidor():
-    ip = input("Introduzca la direccion ip del servidor: ")
-    return ip
+    # hilo encargado de imprimir en pantalla el estado de las descargas
+    def recibirListaLibros(self):
+        lista = self.servidor_central.solicitarListaServidores() 
+        print(lista)
 
 # Conectarse con el servidor 
 def conectar(ip):
@@ -94,9 +102,10 @@ def conectar(ip):
 ### Corrida del programa
 if __name__ == '__main__':
     ip = input("Introduzca su direccion ip publica: ")
+    ip_server = input("Introduzca la direccion ip publica del servidor central: ")
+    puerto = 8000
 
-    #ip_server = datosDelServidor()
-    servidor = conectar('http://192.168.1.140:8000') # Me comporto como cliente y me conecto con el servidor central
+    servidor = conectar('http://'+str(ip_server)+":"+str(puerto)) # Me comporto como cliente y me conecto con el servidor central
 
     cliente = Cliente(servidor, ip)
     cliente.login()

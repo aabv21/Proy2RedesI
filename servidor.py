@@ -12,7 +12,6 @@ from xmlrpc.server import SimpleXMLRPCServer
 import xmlrpc.client
 import sys, json, os
 import threading
-from _thread import *
 
 class ServidorCentral():
 
@@ -24,13 +23,18 @@ class ServidorCentral():
         servidor = xmlrpc.client.ServerProxy("http://"+ip) # Me comporto como cliente y me conecto con servidor de descarga
         return servidor
 
+    # Funcion que permite conseguir el user del cliente dado su direccion ip
+    def conseguirUserCliente(self, direccion_cliente, user):
+        with open('inscripciones.json', 'r+') as f:
+            data = json.load(f)
 
-    def solicitarListaServidores(self):
-        pass
+            for i in data['Registro']:
+                if i['direccion'] == direccion_cliente and i["usuario"] == user:
+                    return i["usuario"]
 
-    #######
-    ### funciones que puede usar el SERVIDOR DESCARGA
-    #######
+    """
+    FUNCIONES QUE PUEDE USAR EL SERVIDOR DE DESCARGA
+    """
 
     # Registra los servidores conectados en un .json y en un arreglo
     def registrarServidores(self, direccion, puerto):
@@ -68,9 +72,9 @@ class ServidorCentral():
         return True
 
 
-    #######
-    ### funciones que puede usar el CLIENTE
-    #######
+    """
+    FUNCIONES QUE PUEDE USAR EL CLIENTE
+    """
 
     # Verifica si el cliente ya se encuentra en la base de datos
     def consultarRegistro(self, user):
@@ -113,31 +117,39 @@ class ServidorCentral():
         return listado
 
     # Solicita un libro
-    def pedirLibro(self, filename, direccion_cliente):
+    def pedirLibro(self, filename, direccion_cliente, size_parcial_libro, user_cliente):
 
-        #user = conseguirUserCliente(direccion_cliente)
-        #print(self.servidores_descarga)
-        for i in self.servidores_descarga:
-            #print(i)
-            servidor = self.conectar_servidores_descarga(i) # conexion con el servidor descarga
-            #binary_pdf, direccion_servidor = servidor.leer_pdf(filename, user, direccion_cliente) #binary data del pdf traido por el servidor descarga
-            binary_pdf, direccion_servidor = servidor.leer_pdf(filename, direccion_cliente) #binary data del pdf traido por el servidor descarga
-            self.registrarLibrosDescargadosXServidor(direccion_servidor, filename)
-            self.registrarClientesAtendidos(direccion_servidor)
-            return binary_pdf
+        user = self.conseguirUserCliente(direccion_cliente, user_cliente)
+        buffer_actual_descargado = size_parcial_libro
 
-    # OPCIONES DE LA CONSOLA DEL SERVIDOR CENTRAL    
+        for servidor_actual in self.servidores_descarga:
+            servidor = self.conectar_servidores_descarga(servidor_actual) # conexion con el servidor descarga
+            size_total_libro = servidor.calcularSizeTotalLibro(filename)
+            binary_pdf, buffer_actual_descargado = servidor.leer_pdf(filename, user, direccion_cliente, buffer_actual_descargado) #binary data del pdf traido por el servidor descarga
+            
+            if size_total_libro <= buffer_actual_descargado:
+
+                self.registrarLibrosDescargadosXServidor(servidor_actual, filename)
+                self.registrarClientesAtendidos(servidor_actual)
+
+            return binary_pdf, buffer_actual_descargado, size_total_libro
+
+    """
+    OPCIONES DE LA CONSOLA DEL SERVIDOR CENTRAL
+    """  
 
     # Ver libros solicitados por cada servidor de descarga y el numero de veces que se ha descargado ese libro
     def VerLibrosDescargadosXServidor(self):
+        print("")
         with open('librosDescargadosxServidor.json' ,'r') as archivo:
             info = json.load(archivo)
 
         for i in info['Descargas']:
-            print("%s     %s" % (i['libro'], i['numero']))
+            print("%s     %s       %s" % (i["direccion"], i['libro'], i['numero']))
 
     # Ver el numero de clientes atendidos por servidor de descarga
     def VerClientesAtendidos(self):
+        print("")
         with open('ClientesAtendidos.json' ,'r') as archivo:
             info = json.load(archivo)
 
@@ -146,6 +158,7 @@ class ServidorCentral():
 
     # Ver cuantas veces se ha caido un servidor de desccarga
     def VerServidoresCaidos(self):
+        print("")
         with open('ServidoresCaidos.json' ,'r') as archivo:
             info = json.load(archivo)
 
@@ -306,15 +319,17 @@ def crearArchivos():
 ### Corrida del programa
 if __name__ == '__main__':
     puerto = 8000
-    server = SimpleXMLRPCServer(("192.168.1.140", puerto), logRequests = False) #Me levanto como un servidor (servidor central)
-    #print(server.server_address)
+    ip = input("Introduzca la direccion ip publica del servidor: ")
+    server = SimpleXMLRPCServer((ip, puerto), logRequests = False) #Me levanto como un servidor (servidor central)
 
     crearArchivos()
 
     server.register_instance(ServidorCentral())
     #server.register_introspection_functions()
+
     s = ServidorCentral()
-    start_new_thread(consolaServidorCentral, (s,))
+    t = threading.Thread(target=consolaServidorCentral, args=([s]))
+    t.start()
 
     try:
         server.serve_forever()
