@@ -21,6 +21,11 @@ class Cliente():
         self.passw = ""
         self.direccion = direccion
 
+    # conectarse con el servidor de descarga
+    def conectar_servidores_descarga(self, ip):
+        servidor = xmlrpc.client.ServerProxy("http://"+ip) # Me comporto como cliente y me conecto con servidor de descarga
+        return servidor
+
     # loguearse en el servidor
     def login(self):
         terminar = False
@@ -65,24 +70,116 @@ class Cliente():
             if 0 <= opcion <= 2:
                 if opcion == 1:
                     self.recibirListaLibros()
-
                 elif opcion == 2:
                     filename = input("Escriba el nombre del archivo: ") #Solicito el nombre del pdf (Debe llevar el .pdf)
-                    t = threading.Thread(target=self.recibirLibro, args=([filename]))
-                    t.start()
+                    lista_de_servidores = self.servidor_central.ListaDeServidoresConLibro(filename)
+                    if len(lista_de_servidores) == 0:
+                        print("Ningun servidor posee el libro")
+                    else:
+                        t = threading.Thread(target=self.recibirLibro, args=([lista_de_servidores, filename]))
+                        t.start()
 
                 else:
                     terminar = True
 
     # hilo encargado de la descarga del libro
-    def recibirLibro(self, filename):
-        size_parcial_libro = 0
-        pdf_binary_parcial, size_parcial_libro, size_total_libro = self.servidor_central.pedirLibro(filename, self.direccion, size_parcial_libro, self.user) #llamo a la funcion
-        self.escribir_pdf(pdf_binary_parcial, filename)
-        while size_parcial_libro < size_total_libro:
-            #print( str(size_parcial_libro) + " <<<<<<<<<<<< " + str(size_total_libro))
-            pdf_binary_parcial, size_parcial_libro, size_total_libro = self.servidor_central.pedirLibro(filename, self.direccion, size_parcial_libro, self.user)
-            self.escribir_pdf(pdf_binary_parcial, filename)
+    def recibirLibro(self, servidores_con_el_libro, filename):
+
+        iteraciones = len(servidores_con_el_libro)
+        porcentaje = 0
+        buffer_actual_descargado = 0
+        se_acabo = False
+
+        while not(se_acabo):
+
+            # Caso cuando el libro esta en un solo servidor de descarga
+            if iteraciones == 1:
+                servidor_i = servidores_con_el_libro[0]
+                servidor = self.conectar_servidores_descarga(servidor_i) # conexion con el servidor descarga
+                binary_pdf, buffer_actual_descargado, porcentaje = servidor.leer_pdf(filename, self.user, self.direccion, buffer_actual_descargado)
+                size_total_libro = servidor.calcularSizeTotalLibro(filename)
+                self.escribir_pdf(binary_pdf, filename) 
+
+                if buffer_actual_descargado <= size_total_libro:
+                    pass
+
+                else:
+                    se_acabo = True 
+                    self.servidor_central.registrarLibrosDescargadosXServidor(servidor_i, filename, self.user)
+                    self.servidor_central.registrarClientesAtendidos(servidor_i)
+
+            # Caso cuando el libro esta en dos servidores de descarga    
+            elif iteraciones == 2:
+
+                if porcentaje <= 50:
+                    servidor_i = servidores_con_el_libro[0]
+                    servidor = self.conectar_servidores_descarga(servidor_i) # conexion con el servidor descarga
+                    binary_pdf, buffer_actual_descargado, porcentaje = servidor.leer_pdf(filename, self.user, self.direccion, buffer_actual_descargado)
+                    size_total_libro = servidor.calcularSizeTotalLibro(filename)
+                    self.escribir_pdf(binary_pdf, filename) 
+
+                    if porcentaje >= 50:
+                        self.servidor_central.registrarLibrosDescargadosXServidor(servidor_i, filename, self.user)
+                        self.servidor_central.registrarClientesAtendidos(servidor_i)
+                    else:
+                        pass
+
+                elif porcentaje > 50:
+                    servidor_i = servidores_con_el_libro[1]
+                    servidor = self.conectar_servidores_descarga(servidor_i) # conexion con el servidor descarga
+                    binary_pdf, buffer_actual_descargado, porcentaje = servidor.leer_pdf(filename, self.user, self.direccion, buffer_actual_descargado)
+                    size_total_libro = servidor.calcularSizeTotalLibro(filename)
+                    self.escribir_pdf(binary_pdf, filename) 
+
+                    if buffer_actual_descargado <= size_total_libro:
+                        pass
+                    else:
+                        self.servidor_central.registrarLibrosDescargadosXServidor(servidor_i, filename, self.user)
+                        self.servidor_central.registrarClientesAtendidos(servidor_i)
+                        se_acabo = True
+
+            # Caso cuando el libro esta en 3 servidores descarga
+            elif iteraciones == 3:
+
+                if porcentaje <= 33:
+                    servidor_i = servidores_con_el_libro[0]
+                    servidor = self.conectar_servidores_descarga(servidor_i) # conexion con el servidor descarga
+                    binary_pdf, buffer_actual_descargado, porcentaje = servidor.leer_pdf(filename, self.user, self.direccion, buffer_actual_descargado)
+                    size_total_libro = servidor.calcularSizeTotalLibro(filename)
+                    self.escribir_pdf(binary_pdf, filename) 
+
+                    if porcentaje >= 33:
+                        self.servidor_central.servidorregistrarLibrosDescargadosXServidor(servidor_i, filename, self.user)
+                        self.servidor_central.registrarClientesAtendidos(servidor_i)
+                    else:
+                        pass
+
+                elif 33 < porcentaje  <= 66:
+                    servidor_i = servidores_con_el_libro[1]
+                    servidor = self.conectar_servidores_descarga(servidor_i) # conexion con el servidor descarga
+                    binary_pdf, buffer_actual_descargado, porcentaje = servidor.leer_pdf(filename, self.user, self.direccion, buffer_actual_descargado)
+                    size_total_libro = servidor.calcularSizeTotalLibro(filename)
+                    self.escribir_pdf(binary_pdf, filename) 
+
+                    if porcentaje >= 66:
+                        self.servidor_central.registrarLibrosDescargadosXServidor(servidor_i, filename, self.user)
+                        self.servidor_central.registrarClientesAtendidos(servidor_i)
+                    else:
+                        pass
+
+                elif porcentaje  > 66:
+                    servidor_i = servidores_con_el_libro[2]
+                    servidor = self.conectar_servidores_descarga(servidor_i) # conexion con el servidor descarga
+                    binary_pdf, buffer_actual_descargado, porcentaje = servidor.leer_pdf(filename, self.user, self.direccion, buffer_actual_descargado)
+                    size_total_libro = servidor.calcularSizeTotalLibro(filename)
+                    self.escribir_pdf(binary_pdf, filename) 
+
+                    if buffer_actual_descargado <= size_total_libro:
+                        pass
+                    else:
+                        self.servidor_central.registrarLibrosDescargadosXServidor(servidor_i, filename, self.user)
+                        self.servidor_central.registrarClientesAtendidos(servidor_i)
+                        se_acabo = True
 
     # recibir el binary del pdf 
     def escribir_pdf(self, pdf_binary, filename):

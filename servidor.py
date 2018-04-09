@@ -15,28 +15,51 @@ import threading
 
 class ServidorCentral():
 
-    def __init__(self):
-        self.servidores_descarga = []
-
     # conectarse con el servidor de descarga
     def conectar_servidores_descarga(self, ip):
         servidor = xmlrpc.client.ServerProxy("http://"+ip) # Me comporto como cliente y me conecto con servidor de descarga
         return servidor
 
     # Funcion que permite conseguir el user del cliente dado su direccion ip
-    def conseguirUserCliente(self, direccion_cliente, user):
-        with open('inscripciones.json', 'r+') as f:
-            data = json.load(f)
+    #def conseguirUserCliente(self, direccion_cliente, user):
+        #with open('inscripciones.json', 'r+') as f:
+            #data = json.load(f)
 
-            for i in data['Registro']:
-                if i['direccion'] == direccion_cliente and i["usuario"] == user:
-                    return i["usuario"]
+            #for i in data['Registro']:
+                #if i['direccion'] == direccion_cliente and i["usuario"] == user:
+                    #return i["usuario"]
+
+    #def servidoresCaidos(self, direccion_borrar):
+        #self.servidores_descarga.remove(direccion_borrar)
+
+    # Funcion que a partir del nombre del archivo, me permite retornar una lista con todos los servidores descarga que lo posee
+    def ListaDeServidoresConLibro(self, filename):
+        servidores_con_el_libro = []
+
+        with open('servidoresLibros.json', 'r+') as f:
+            info = json.load(f)
+
+            for i in info['Registro']:
+                aux = i["libros"]
+
+                aux2 = aux.split('\n')
+                aux2.pop()
+                #print(aux2)
+                for j in aux2:
+                    if j == filename:
+                        ip = i["direccion"] +":8000"
+                        servidores_con_el_libro.append(ip)
+                    else:
+                        pass
+
+        #print(servidores_con_el_libro)
+        return servidores_con_el_libro
 
     """
     FUNCIONES QUE PUEDE USAR EL SERVIDOR DE DESCARGA
     """
 
-    # Registra los servidores conectados en un .json y en un arreglo
+    # Registra los servidores conectados en un .json
     def registrarServidores(self, direccion, puerto):
         match = False
         with open('servidoresDescargas.json', 'r+') as f:
@@ -51,7 +74,6 @@ class ServidorCentral():
                 f.seek(0)
                 data["Registro"].append({'direccion': direccion, 'puerto': puerto})
                 json.dump(data, f, indent=4)
-        self.servidores_descarga.append(direccion+":"+str(puerto))
         return True
 
     # Registra los libros que posee un servidor descarga en la base de datos del servidor central
@@ -70,7 +92,6 @@ class ServidorCentral():
                 info["Registro"].append({'direccion': direccion, 'libros': lista})
                 json.dump(info, f, indent=4)
         return True
-
 
     """
     FUNCIONES QUE PUEDE USAR EL CLIENTE
@@ -112,27 +133,19 @@ class ServidorCentral():
             info = json.load(archivo)
 
         for i in info['Registro']:
-            listado += i["direccion"] +":\n" +i["libros"]
+            listado += i["direccion"] +":\n\n" +i["libros"]+"\n"
 
         return listado
 
-    # Solicita un libro
-    def pedirLibro(self, filename, direccion_cliente, size_parcial_libro, user_cliente):
-
-        user = self.conseguirUserCliente(direccion_cliente, user_cliente)
-        buffer_actual_descargado = size_parcial_libro
-
-        for servidor_actual in self.servidores_descarga:
-            servidor = self.conectar_servidores_descarga(servidor_actual) # conexion con el servidor descarga
-            size_total_libro = servidor.calcularSizeTotalLibro(filename)
-            binary_pdf, buffer_actual_descargado = servidor.leer_pdf(filename, user, direccion_cliente, buffer_actual_descargado) #binary data del pdf traido por el servidor descarga
-            
-            if size_total_libro <= buffer_actual_descargado:
-
-                self.registrarLibrosDescargadosXServidor(servidor_actual, filename)
-                self.registrarClientesAtendidos(servidor_actual)
-
-            return binary_pdf, buffer_actual_descargado, size_total_libro
+    #def sizeDelLibro(self, filename):
+        
+        #if len(self.servidores_con_el_libro) > 0:
+            #aux = self.servidores_con_el_libro[0]
+            #servidor = self.conectar_servidores_descarga(aux)
+            #size = self.calcularSizeTotalLibro(filename)
+            #return size
+        #else:
+            #return -1
 
     """
     OPCIONES DE LA CONSOLA DEL SERVIDOR CENTRAL
@@ -166,7 +179,7 @@ class ServidorCentral():
             print("%s     %s" % (i['direccion'], i['numero']))
 
     #  Registrar los libros solicitados por cada servidor de descarga y el numero de veces que se ha descargado ese libro
-    def registrarLibrosDescargadosXServidor(self, direccion_servidor, libro):
+    def registrarLibrosDescargadosXServidor(self, direccion_servidor, libro, user):
         match = False
         cont = 0
         with open('librosDescargadosxServidor.json', 'r+') as f:
@@ -194,6 +207,12 @@ class ServidorCentral():
                 f.seek(0)
                 data["Descargas"].append({'libro': libro, "direccion" : direccion_servidor, 'numero': '1'})
                 json.dump(data, f, indent=4)
+
+        servidor = self.conectar_servidores_descarga(direccion_servidor)
+        servidor.registrarLibrosDescargados(libro)
+        servidor.registrarClientesQueSolicitan(user, direccion_servidor)
+
+        return True
 
     #  Registrar los clientes atendidos por servidor de descarga
     def registrarClientesAtendidos(self, direccion):
@@ -225,6 +244,8 @@ class ServidorCentral():
                 data["Servidores"].append({'direccion': direccion, 'numero': '1'})
                 json.dump(data, f, indent=4)
 
+        return True
+
     #  Registrar cuantas veces se ha caido un servidor de desccarga
     def registrarServidoresCaidos(self, direccion):
         match = False
@@ -254,6 +275,8 @@ class ServidorCentral():
                 f.seek(0)
                 data["Caidos"].append({'direccion': direccion, 'numero': '1'})
                 json.dump(data, f, indent=4)
+
+        return True
 
 
 # Consola del Servidor Central

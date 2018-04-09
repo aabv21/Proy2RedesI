@@ -77,6 +77,8 @@ class Servidor():
                 data["Descargas"].append({'archivo': archivo, 'numero': '1'})
                 json.dump(data, f, indent=4)
 
+        return True
+
     # Para registrar los clientes que mas han solicitado 
     def registrarClientesQueSolicitan(self, user, direccion):
         match = False
@@ -105,6 +107,8 @@ class Servidor():
                 f.seek(0)
                 data["Clientes"].append({'nombre': user, 'direccion': direccion, 'numero': '1'})
                 json.dump(data, f, indent=4)
+
+        return True
 
     # Ver en pantalla los libros descargados y en que cantidad
     def verLibrosDescargados(self):
@@ -138,7 +142,7 @@ class Servidor():
         return os.stat(filename).st_size
 
     # Abrir el archivo .pdf en formato rbs
-    def leer_pdf(self, filename, user, direccion_cliente, buffer_actual, fileoption="rb"):
+    def leer_pdf(self, filename, user, direccion_cliente, buffer_actual, divisor, fileoption="rb"):
         try:
             with open(filename, fileoption) as f:
                 total = self.calcularSizeTotalLibro(filename)
@@ -152,30 +156,25 @@ class Servidor():
                     #print("rango de "+str(buffer_actual)+ " al "+str(buffer_actual+faltante))
                     data = f.read(faltante)
 
+                porcentaje = self.calcularPorcentaje(total, buffer_actual)
                 sleep(0.1)
                 show_status = display.wait(0.01)
-                if show_status:
-                    porcentaje = self.calcularPorcentaje(total, buffer_actual)
+                if show_status: 
                     aux_porcentaje = '{:.2f}'.format(porcentaje)
-                    print('Descarga ' + filename + ': ' + aux_porcentaje)
+                    print('Descarga ' + filename + ' en el servidor ' +self.direccion+' : ' + aux_porcentaje)
 
                 buffer_actual = buffer_actual + 1024
 
-                return self.descargar_pdf(data, filename, user, direccion_cliente, buffer_actual)
+                return self.descargar_pdf(data, filename, user, direccion_cliente, buffer_actual, porcentaje)
         except Exception as ex:
             print(ex)
             print('Error al leer el archivo')
 
     # Transferirir el binary data del pdf al servidor central
-    def descargar_pdf(self, data, filename, user, direccion, buffer_actual):
+    def descargar_pdf(self, data, filename, user, direccion, buffer_actual, porcentaje):
 
         binary_data =  xmlrpc.client.Binary(data)
-        total = self.calcularSizeTotalLibro(filename)
-        if total <= buffer_actual:
-            #print(buffer_actual)
-            self.registrarLibrosDescargados(filename)
-            self.registrarClientesQueSolicitan(user, direccion)
-        return binary_data, buffer_actual
+        return binary_data, buffer_actual, porcentaje
 
     def conseguirUser(self, direccion_cliente):
         return self.servidorCentral.userCliente(self.direccion, self.puerto)
