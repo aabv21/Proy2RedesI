@@ -142,7 +142,7 @@ class Servidor():
         return os.stat(filename).st_size
 
     # Abrir el archivo .pdf en formato rbs
-    def leer_pdf(self, filename, user, direccion_cliente, buffer_actual, divisor, fileoption="rb"):
+    def leer_pdf(self, filename, user, direccion_cliente, buffer_actual, fileoption="rb"):
         try:
             with open(filename, fileoption) as f:
                 total = self.calcularSizeTotalLibro(filename)

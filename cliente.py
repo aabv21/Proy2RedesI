@@ -149,7 +149,7 @@ class Cliente():
                     self.escribir_pdf(binary_pdf, filename) 
 
                     if porcentaje >= 33:
-                        self.servidor_central.servidorregistrarLibrosDescargadosXServidor(servidor_i, filename, self.user)
+                        self.servidor_central.registrarLibrosDescargadosXServidor(servidor_i, filename, self.user)
                         self.servidor_central.registrarClientesAtendidos(servidor_i)
                     else:
                         pass
