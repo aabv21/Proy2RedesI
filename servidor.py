@@ -1,53 +1,40 @@
 """
     servidor.py
-    
+
     Fecha: /04/2018
-    Autor: Andres Buelvas
-    carnet: 13-10184
+    Autores: Andres Buelvas     13-10184
+             Salvador         
     Materia: CI-4835 Redes De Computadoras I
     Proyecto #2: Cliente-Servidor
 """
-
+# Importaciones
 from xmlrpc.server import SimpleXMLRPCServer
 import xmlrpc.client
 import sys, json, os
 import threading
 
 class ServidorCentral():
-
-    def __init__(self):
-        self.servidores_activos = []
-
-    def servidoresPrendidos(self, direccion_puerto_servidor):
-        match = False
-        if len(self.servidores_activos) > 0:
-            for i in self.servidores_activos:
-                if i == direccion_puerto_servidor:
-                    match = True
-                    break
-
-        if not(match):
-            self.servidores_activos.append(direccion_puerto_servidor)
+    """ Clase ServidorCentral que permite crear objetos de tipo ServidorCentral
+    """
 
     # conectarse con el servidor de descarga
     def conectar_servidores_descarga(self, ip):
+        """ Metodo que permite conectarse con servidores de descarga
+
+        Este metodo recibe una direccion junto a su puerto (ej 127.0.0.1:8000). Este
+        metodo intentara conectarse al servidor de descarga, si esto ocurre, entonces se 
+        retorna una intancia del servidor de descarga.
+        """
         servidor = xmlrpc.client.ServerProxy("http://"+ip) # Me comporto como cliente y me conecto con servidor de descarga
         return servidor
 
-    # Funcion que permite conseguir el user del cliente dado su direccion ip
-    #def conseguirUserCliente(self, direccion_cliente, user):
-        #with open('inscripciones.json', 'r+') as f:
-            #data = json.load(f)
-
-            #for i in data['Registro']:
-                #if i['direccion'] == direccion_cliente and i["usuario"] == user:
-                    #return i["usuario"]
-
-    #def servidoresCaidos(self, direccion_borrar):
-        #self.servidores_descarga.remove(direccion_borrar)
-
     # Funcion que a partir del nombre del archivo, me permite retornar una lista con todos los servidores descarga que lo posee
     def ListaDeServidoresConLibro(self, filename):
+        """ Metodo que permite saber que servidores poseen un libro
+
+        Este metodo a partir del nombre del libro lleva a cabo la recoleccion de todos
+        los servidores descarga que lo ofrecen y los retorna a traves de un arreglo
+        """
         servidores_con_el_libro = []
 
         with open('servidoresLibros.json', 'r+') as f:
@@ -58,7 +45,6 @@ class ServidorCentral():
 
                 aux2 = aux.split('\n')
                 aux2.pop()
-                #print(aux2)
                 for j in aux2:
                     if j == filename:
                         ip = i["direccion"] +":8000"
@@ -66,7 +52,6 @@ class ServidorCentral():
                     else:
                         pass
 
-        #print(servidores_con_el_libro)
         return servidores_con_el_libro
 
     """
@@ -75,6 +60,11 @@ class ServidorCentral():
 
     # Registra los servidores conectados en un .json
     def registrarServidores(self, direccion, puerto):
+        """ Metodo que permite registrar los servidores descargas
+
+        Este metodo recibira el nombre la direccion y puerto de escucha del
+        servidor descarga
+        """
         match = False
         with open('servidoresDescargas.json', 'r+') as f:
             data = json.load(f)
@@ -92,6 +82,11 @@ class ServidorCentral():
 
     # Registra los libros que posee un servidor descarga en la base de datos del servidor central
     def registrarLibros(self, lista, direccion):
+        """ Metodo que permite registrar los libros que ofrece cada servidor de descarga
+
+        Este metodo recibira un string con los libros que ofrece cada servidor descarga, estos 
+        se guardaran junto a la direccion IP del servidor descarga
+        """
         match = False
         with open('servidoresLibros.json', 'r+') as f:
             info = json.load(f)
@@ -113,6 +108,11 @@ class ServidorCentral():
 
     # Verifica si el cliente ya se encuentra en la base de datos
     def consultarRegistro(self, user):
+        """ Metodo que verifica si un cliente se cuentra en la base de datos
+
+        Recibe el user del cliente y verifica si ya existe otro user mas con ese nombre, retorna
+        un metodo que permite saber si ya se encuentra o no en la base de datos
+        """
         with open('inscripciones.json', 'r') as archivo:
             info = json.load(archivo)
 
@@ -123,6 +123,11 @@ class ServidorCentral():
 
     # Verifica que los datos introducidos coinciden con el de la cuenta
     def consultarlogin(self, user, passw):
+        """ Metodo que verifica el user y el password
+
+        Este metodo verifica si los datos introducidos por el cliente son los mismos
+        que se introdujeron cuando se registro
+        """
         with open('inscripciones.json', 'r') as archivo:
             info = json.load(archivo)
 
@@ -133,6 +138,11 @@ class ServidorCentral():
 
     # Registra el nuevo cliente
     def inscribirse(self, user, passw, direccion_cliente):
+        """ Metodo que permite registrar un cliente
+
+        Este metodo recibe el user, password y direccion IP del cliente y lo guarda
+        en la base de datos
+        """
         with open('inscripciones.json', 'r+') as f:
             data = json.load(f)
             f.seek(0)
@@ -281,21 +291,10 @@ class ServidorCentral():
                 data["Caidos"].append({'direccion': direccion, 'numero': '1'})
                 json.dump(data, f, indent=4)
 
-        #if len(self.servidores_activos) > 0:
-            #for i in self.servidores_activos:
-                #if i == direccion:
-                    #match2 = True
-                    #break
-        #else:
-            #pass
-
-        #if match2:
-            #self.servidores_activos.remove(direccion)
-
         return True
 
 # Consola del Servidor Central
-def consolaServidorCentral(s):
+def consolaServidorCentral(s, yo):
     terminar = False
     while not (terminar):
         print("\n1) LibrosDescargadosxServidor \n2) Nro. De clientes atendidos \n3) Servidores Caídos \n0) Salir")
@@ -309,6 +308,8 @@ def consolaServidorCentral(s):
                 s.VerServidoresCaidos()
             else:
                 terminar = True
+
+    yo.shutdown()
 
 # Crea los archivos del servidor
 def crearArchivos():
@@ -366,7 +367,7 @@ if __name__ == '__main__':
     #server.register_introspection_functions()
 
     s = ServidorCentral()
-    t = threading.Thread(target=consolaServidorCentral, args=([s]))
+    t = threading.Thread(target=consolaServidorCentral, args=([s, server]))
     t.start()
 
     try:

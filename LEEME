@@ -1,0 +1,11 @@
+Ejecutar el cliente.py de la siguiente forma:
+	python3 cliente.py
+
+Ejecutar el servidor.py de la siguiente forma:
+	python3 servidor.py
+
+Ejecutar el servidor.py de la siguiente forma:
+	python3 servidorDescarga.py
+
+Si desea obtener la documentacion en pydoc 3 de los programas, escriba:
+	sh pydoc3.sh
