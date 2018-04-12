@@ -15,6 +15,20 @@ import threading
 
 class ServidorCentral():
 
+    def __init__(self):
+        self.servidores_activos = []
+
+    def servidoresPrendidos(self, direccion_puerto_servidor):
+        match = False
+        if len(self.servidores_activos) > 0:
+            for i in self.servidores_activos:
+                if i == direccion_puerto_servidor:
+                    match = True
+                    break
+
+        if not(match):
+            self.servidores_activos.append(direccion_puerto_servidor)
+
     # conectarse con el servidor de descarga
     def conectar_servidores_descarga(self, ip):
         servidor = xmlrpc.client.ServerProxy("http://"+ip) # Me comporto como cliente y me conecto con servidor de descarga
@@ -137,16 +151,6 @@ class ServidorCentral():
 
         return listado
 
-    #def sizeDelLibro(self, filename):
-        
-        #if len(self.servidores_con_el_libro) > 0:
-            #aux = self.servidores_con_el_libro[0]
-            #servidor = self.conectar_servidores_descarga(aux)
-            #size = self.calcularSizeTotalLibro(filename)
-            #return size
-        #else:
-            #return -1
-
     """
     OPCIONES DE LA CONSOLA DEL SERVIDOR CENTRAL
     """  
@@ -179,7 +183,7 @@ class ServidorCentral():
             print("%s     %s" % (i['direccion'], i['numero']))
 
     #  Registrar los libros solicitados por cada servidor de descarga y el numero de veces que se ha descargado ese libro
-    def registrarLibrosDescargadosXServidor(self, direccion_servidor, libro, user):
+    def registrarLibrosDescargadosXServidor(self, direccion_servidor, libro, user, direccion_cliente):
         match = False
         cont = 0
         with open('librosDescargadosxServidor.json', 'r+') as f:
@@ -210,7 +214,7 @@ class ServidorCentral():
 
         servidor = self.conectar_servidores_descarga(direccion_servidor)
         servidor.registrarLibrosDescargados(libro)
-        servidor.registrarClientesQueSolicitan(user, direccion_servidor)
+        servidor.registrarClientesQueSolicitan(user, direccion_cliente)
 
         return True
 
@@ -249,6 +253,7 @@ class ServidorCentral():
     #  Registrar cuantas veces se ha caido un servidor de desccarga
     def registrarServidoresCaidos(self, direccion):
         match = False
+        match2 = False
         cont = 0
         with open('ServidoresCaidos.json', 'r+') as f:
             info = json.load(f)
@@ -276,8 +281,18 @@ class ServidorCentral():
                 data["Caidos"].append({'direccion': direccion, 'numero': '1'})
                 json.dump(data, f, indent=4)
 
-        return True
+        #if len(self.servidores_activos) > 0:
+            #for i in self.servidores_activos:
+                #if i == direccion:
+                    #match2 = True
+                    #break
+        #else:
+            #pass
 
+        #if match2:
+            #self.servidores_activos.remove(direccion)
+
+        return True
 
 # Consola del Servidor Central
 def consolaServidorCentral(s):

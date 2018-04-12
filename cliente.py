@@ -10,7 +10,8 @@
 
 from xmlrpc.server import SimpleXMLRPCServer
 import xmlrpc.client
-import socket, threading, time
+import socket, threading
+from time import sleep
 
 class Cliente():
 
@@ -52,7 +53,7 @@ class Cliente():
                     else:
                         print("El username "+str(user)+" ya se encuentra en la base de datos\n")
 
-                elif opcion == 0:
+                else:
                     terminar = True
 
     # Solicita datos de inscripcion y registro
@@ -76,11 +77,21 @@ class Cliente():
                     if len(lista_de_servidores) == 0:
                         print("Ningun servidor posee el libro")
                     else:
-                        t = threading.Thread(target=self.recibirLibro, args=([lista_de_servidores, filename]))
-                        t.start()
+                        try:
+                            t = threading.Thread(target=self.recibirLibro, args=([lista_de_servidores, filename]))
+                            t.start()
+                        except ConnectionRefusedError:
+                            print("dsdsddsd")
 
                 else:
                     terminar = True
+
+    def verificacionEscritura(self, direccion):
+        if len(self.lista_bool) > 0:
+            for i in self.lista_bool:
+                if i == direccion:
+                    return True
+        return False
 
     # hilo encargado de la descarga del libro
     def recibirLibro(self, servidores_con_el_libro, filename):
@@ -89,97 +100,163 @@ class Cliente():
         porcentaje = 0
         buffer_actual_descargado = 0
         se_acabo = False
+        self.lista_bool = []
 
         while not(se_acabo):
 
             # Caso cuando el libro esta en un solo servidor de descarga
-            if iteraciones == 1:
+            if len(servidores_con_el_libro) == 1:
                 servidor_i = servidores_con_el_libro[0]
-                servidor = self.conectar_servidores_descarga(servidor_i) # conexion con el servidor descarga
-                binary_pdf, buffer_actual_descargado, porcentaje = servidor.leer_pdf(filename, self.user, self.direccion, buffer_actual_descargado)
-                size_total_libro = servidor.calcularSizeTotalLibro(filename)
-                self.escribir_pdf(binary_pdf, filename) 
+
+                try:
+                    servidor = self.conectar_servidores_descarga(servidor_i) # conexion con el servidor descarga
+                    size_total_libro = servidor.calcularSizeTotalLibro(filename)
+                    binary_pdf, buffer_actual_descargado, porcentaje = servidor.leer_pdf(filename, self.user, self.direccion, buffer_actual_descargado)
+                    self.escribir_pdf(binary_pdf, filename) 
+
+                except (xmlrpc.client.Error,  KeyboardInterrupt, ConnectionRefusedError) as v:
+                    sleep(1.5)
+                    servidores_con_el_libro.remove(servidor_i)
+                    self.servidor_central.registrarServidoresCaidos(servidor_i)
 
                 if buffer_actual_descargado <= size_total_libro:
                     pass
 
                 else:
+                    aux = self.verificacionEscritura(servidor_i)
+                    if not(aux):
+                        self.lista_bool.append(servidor_i)
+                        self.servidor_central.registrarLibrosDescargadosXServidor(servidor_i, filename, self.user, self.direccion)
+                        self.servidor_central.registrarClientesAtendidos(servidor_i)
+                    else:
+                        pass
                     se_acabo = True 
-                    self.servidor_central.registrarLibrosDescargadosXServidor(servidor_i, filename, self.user)
-                    self.servidor_central.registrarClientesAtendidos(servidor_i)
 
             # Caso cuando el libro esta en dos servidores de descarga    
-            elif iteraciones == 2:
+            elif len(servidores_con_el_libro) == 2:
 
                 if porcentaje <= 50:
                     servidor_i = servidores_con_el_libro[0]
-                    servidor = self.conectar_servidores_descarga(servidor_i) # conexion con el servidor descarga
-                    binary_pdf, buffer_actual_descargado, porcentaje = servidor.leer_pdf(filename, self.user, self.direccion, buffer_actual_descargado)
-                    size_total_libro = servidor.calcularSizeTotalLibro(filename)
-                    self.escribir_pdf(binary_pdf, filename) 
+                    try:
+                        servidor = self.conectar_servidores_descarga(servidor_i) # conexion con el servidor descarga
+                        size_total_libro = servidor.calcularSizeTotalLibro(filename)
+                        binary_pdf, buffer_actual_descargado, porcentaje = servidor.leer_pdf(filename, self.user, self.direccion, buffer_actual_descargado)
+                        self.escribir_pdf(binary_pdf, filename) 
+
+                    except (xmlrpc.client.Error,  KeyboardInterrupt, ConnectionRefusedError) as v:
+                        sleep(1.5)
+                        servidores_con_el_libro.remove(servidor_i)
+                        self.servidor_central.registrarServidoresCaidos(servidor_i)
 
                     if porcentaje >= 50:
-                        self.servidor_central.registrarLibrosDescargadosXServidor(servidor_i, filename, self.user)
-                        self.servidor_central.registrarClientesAtendidos(servidor_i)
+                        aux = self.verificacionEscritura(servidor_i)
+                        if not(aux):
+                            self.lista_bool.append(servidor_i)
+                            self.servidor_central.registrarLibrosDescargadosXServidor(servidor_i, filename, self.user, self.direccion)
+                            self.servidor_central.registrarClientesAtendidos(servidor_i)
                     else:
                         pass
 
                 elif porcentaje > 50:
                     servidor_i = servidores_con_el_libro[1]
-                    servidor = self.conectar_servidores_descarga(servidor_i) # conexion con el servidor descarga
-                    binary_pdf, buffer_actual_descargado, porcentaje = servidor.leer_pdf(filename, self.user, self.direccion, buffer_actual_descargado)
-                    size_total_libro = servidor.calcularSizeTotalLibro(filename)
-                    self.escribir_pdf(binary_pdf, filename) 
+                    try:
+                        servidor = self.conectar_servidores_descarga(servidor_i) # conexion con el servidor descarga
+                        size_total_libro = servidor.calcularSizeTotalLibro(filename)
+                        binary_pdf, buffer_actual_descargado, porcentaje = servidor.leer_pdf(filename, self.user, self.direccion, buffer_actual_descargado)
+                        self.escribir_pdf(binary_pdf, filename)
+
+                    except (xmlrpc.client.Error,  KeyboardInterrupt, ConnectionRefusedError) as v: 
+                        sleep(1.5)
+                        servidores_con_el_libro.remove(servidor_i)
+                        self.servidor_central.registrarServidoresCaidos(servidor_i)
 
                     if buffer_actual_descargado <= size_total_libro:
                         pass
                     else:
-                        self.servidor_central.registrarLibrosDescargadosXServidor(servidor_i, filename, self.user)
-                        self.servidor_central.registrarClientesAtendidos(servidor_i)
+                        aux = self.verificacionEscritura(servidor_i)
+                        if not(aux):
+                            self.lista_bool.append(servidor_i)
+                            self.servidor_central.registrarLibrosDescargadosXServidor(servidor_i, filename, self.user, self.direccion)
+                            self.servidor_central.registrarClientesAtendidos(servidor_i)
+                        else: 
+                            pass
                         se_acabo = True
 
             # Caso cuando el libro esta en 3 servidores descarga
-            elif iteraciones == 3:
+            elif len(servidores_con_el_libro) == 3:
 
                 if porcentaje <= 33:
                     servidor_i = servidores_con_el_libro[0]
-                    servidor = self.conectar_servidores_descarga(servidor_i) # conexion con el servidor descarga
-                    binary_pdf, buffer_actual_descargado, porcentaje = servidor.leer_pdf(filename, self.user, self.direccion, buffer_actual_descargado)
-                    size_total_libro = servidor.calcularSizeTotalLibro(filename)
-                    self.escribir_pdf(binary_pdf, filename) 
+                    try:
+                        servidor = self.conectar_servidores_descarga(servidor_i) # conexion con el servidor descarga
+                        size_total_libro = servidor.calcularSizeTotalLibro(filename)
+                        binary_pdf, buffer_actual_descargado, porcentaje = servidor.leer_pdf(filename, self.user, self.direccion, buffer_actual_descargado)
+                        self.escribir_pdf(binary_pdf, filename)
+
+                    except (xmlrpc.client.Error,  KeyboardInterrupt, ConnectionRefusedError) as v:
+                        sleep(1.5)
+                        servidores_con_el_libro.remove(servidor_i)
+                        self.servidor_central.registrarServidoresCaidos(servidor_i)  
 
                     if porcentaje >= 33:
-                        self.servidor_central.registrarLibrosDescargadosXServidor(servidor_i, filename, self.user)
-                        self.servidor_central.registrarClientesAtendidos(servidor_i)
+                        aux = self.verificacionEscritura(servidor_i)
+                        if not(aux):
+                            self.lista_bool.append(servidor_i)
+                            self.servidor_central.registrarLibrosDescargadosXServidor(servidor_i, filename, self.user, self.direccion)
+                            self.servidor_central.registrarClientesAtendidos(servidor_i)
                     else:
                         pass
 
                 elif 33 < porcentaje  <= 66:
                     servidor_i = servidores_con_el_libro[1]
-                    servidor = self.conectar_servidores_descarga(servidor_i) # conexion con el servidor descarga
-                    binary_pdf, buffer_actual_descargado, porcentaje = servidor.leer_pdf(filename, self.user, self.direccion, buffer_actual_descargado)
-                    size_total_libro = servidor.calcularSizeTotalLibro(filename)
-                    self.escribir_pdf(binary_pdf, filename) 
+                    try:
+                        servidor = self.conectar_servidores_descarga(servidor_i) # conexion con el servidor descarga
+                        size_total_libro = servidor.calcularSizeTotalLibro(filename)
+                        binary_pdf, buffer_actual_descargado, porcentaje = servidor.leer_pdf(filename, self.user, self.direccion, buffer_actual_descargado)
+                        self.escribir_pdf(binary_pdf, filename)
+
+                    except (xmlrpc.client.Error,  KeyboardInterrupt, ConnectionRefusedError) as v:
+                        sleep(1.5)
+                        servidores_con_el_libro.remove(servidor_i)
+                        self.servidor_central.registrarServidoresCaidos(servidor_i)  
 
                     if porcentaje >= 66:
-                        self.servidor_central.registrarLibrosDescargadosXServidor(servidor_i, filename, self.user)
-                        self.servidor_central.registrarClientesAtendidos(servidor_i)
+                        aux = self.verificacionEscritura(servidor_i)
+                        if not(aux):
+                            self.lista_bool.append(servidor_i)
+                            self.servidor_central.registrarLibrosDescargadosXServidor(servidor_i, filename, self.user, self.direccion)
+                            self.servidor_central.registrarClientesAtendidos(servidor_i)
                     else:
                         pass
 
                 elif porcentaje  > 66:
                     servidor_i = servidores_con_el_libro[2]
-                    servidor = self.conectar_servidores_descarga(servidor_i) # conexion con el servidor descarga
-                    binary_pdf, buffer_actual_descargado, porcentaje = servidor.leer_pdf(filename, self.user, self.direccion, buffer_actual_descargado)
-                    size_total_libro = servidor.calcularSizeTotalLibro(filename)
-                    self.escribir_pdf(binary_pdf, filename) 
+                    try:
+                        servidor = self.conectar_servidores_descarga(servidor_i) # conexion con el servidor descarga
+                        size_total_libro = servidor.calcularSizeTotalLibro(filename)
+                        binary_pdf, buffer_actual_descargado, porcentaje = servidor.leer_pdf(filename, self.user, self.direccion, buffer_actual_descargado)
+                        self.escribir_pdf(binary_pdf, filename) 
+
+                    except (xmlrpc.client.Error,  KeyboardInterrupt, ConnectionRefusedError) as v:
+                        sleep(1.5)
+                        servidores_con_el_libro.remove(servidor_i)
+                        self.servidor_central.registrarServidoresCaidos(servidor_i)
 
                     if buffer_actual_descargado <= size_total_libro:
                         pass
                     else:
-                        self.servidor_central.registrarLibrosDescargadosXServidor(servidor_i, filename, self.user)
-                        self.servidor_central.registrarClientesAtendidos(servidor_i)
+                        aux = self.verificacionEscritura(servidor_i)
+                        if not(aux):
+                            self.lista_bool.append(servidor_i)
+                            self.servidor_central.registrarLibrosDescargadosXServidor(servidor_i, filename, self.user, self.direccion)
+                            self.servidor_central.registrarClientesAtendidos(servidor_i)
+                        else:
+                            pass
                         se_acabo = True
+
+            elif len(servidores_con_el_libro) == 0:
+                print("\n>>>> NINGUN SERVIDOR SE ENCUENTRA DISPONIBLE <<<<")        
+                se_acabo = True
 
     # recibir el binary del pdf 
     def escribir_pdf(self, pdf_binary, filename):

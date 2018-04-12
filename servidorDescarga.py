@@ -22,6 +22,7 @@ class Servidor():
         self.direccion = direccion
         self.puerto = puerto
         self.mostrar = False
+        #self.servidorCentral.servidoresPrendidos(str(direccion)+":"+str(puerto))
 
     # Direccion ip del servidor que se enviara al servidor central para su bd
     def enviarDireccion(self):
@@ -161,7 +162,7 @@ class Servidor():
                 show_status = display.wait(0.01)
                 if show_status: 
                     aux_porcentaje = '{:.2f}'.format(porcentaje)
-                    print('Descarga ' + filename + ' en el servidor ' +self.direccion+' : ' + aux_porcentaje)
+                    print('Descarga por parte del usuario ' +str(user)+ " el archivo "+ filename + ' en el servidor ' +self.direccion+' : ' + aux_porcentaje)
 
                 buffer_actual = buffer_actual + 1024
 
