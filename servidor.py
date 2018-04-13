@@ -1,9 +1,9 @@
 """
     servidor.py
 
-    Fecha: /04/2018
+    Fecha: 12/04/2018
     Autores: Andres Buelvas     13-10184
-             Salvador         
+             Salvador Covelo    10-10164   
     Materia: CI-4835 Redes De Computadoras I
     Proyecto #2: Cliente-Servidor
 """
@@ -152,6 +152,11 @@ class ServidorCentral():
 
     # Solicita la lista de libros de los servidores descargas a traves del servidor central
     def solicitarListaServidores(self):
+        """ Metodo que recolecta los libros ofrecidos por los servidores descargas
+
+        Este metodo busca en la base de datos todos los libros que ofrecen los servidores
+        descargas con las respectivas direcciones ip de los servidores que lo ofrecen
+        """
         listado = "\n"
         with open('servidoresLibros.json' ,'r') as archivo:
             info = json.load(archivo)
@@ -167,6 +172,8 @@ class ServidorCentral():
 
     # Ver libros solicitados por cada servidor de descarga y el numero de veces que se ha descargado ese libro
     def VerLibrosDescargadosXServidor(self):
+        """ Metodo que permite visualizar las estadisticas de los libros descargados por cada servidor
+        """
         print("")
         with open('librosDescargadosxServidor.json' ,'r') as archivo:
             info = json.load(archivo)
@@ -176,6 +183,8 @@ class ServidorCentral():
 
     # Ver el numero de clientes atendidos por servidor de descarga
     def VerClientesAtendidos(self):
+        """ Metodo que permite visualizar las estadisticas de los clientes atendidos por servidor
+        """
         print("")
         with open('ClientesAtendidos.json' ,'r') as archivo:
             info = json.load(archivo)
@@ -185,6 +194,8 @@ class ServidorCentral():
 
     # Ver cuantas veces se ha caido un servidor de desccarga
     def VerServidoresCaidos(self):
+        """ Metodo que permite visualizar las estadisticas de los servidores que se han caido
+        """
         print("")
         with open('ServidoresCaidos.json' ,'r') as archivo:
             info = json.load(archivo)
@@ -194,6 +205,16 @@ class ServidorCentral():
 
     #  Registrar los libros solicitados por cada servidor de descarga y el numero de veces que se ha descargado ese libro
     def registrarLibrosDescargadosXServidor(self, direccion_servidor, libro, user, direccion_cliente):
+        """ Metodo que registra las estadisticas de los libros descargados por servidores_con_el_libro
+
+        Este metodo recibe la direccion ip del servidor, los libros que el servidor posee, el user del cliente
+        y la direccion ip del cliente. Este metodo guardara en un .json los datos solicitados, actualizados si
+        ya se encontraba registro de las descargas o un nuevo registro del mismo si no existia dato alguno
+        del servidor
+
+        Este metodo a su vez, le informa al servidor descarga sobre las estadisticas que debe actualizar en su 
+        base de datos
+        """
         match = False
         cont = 0
         with open('librosDescargadosxServidor.json', 'r+') as f:
@@ -230,6 +251,12 @@ class ServidorCentral():
 
     #  Registrar los clientes atendidos por servidor de descarga
     def registrarClientesAtendidos(self, direccion):
+        """ Metodo que permite registrar los clientes que fueron atendidos
+
+        Este metodo recibe la direccion ip del cliente. Este metodo guardara en un .json los datos solicitados, actualizados si
+        ya se encontraba registro de las descargas o un nuevo registro del mismo si no existia dato alguno
+        del cliente
+        """
         match = False
         cont = 0
         with open('ClientesAtendidos.json', 'r+') as f:
@@ -262,6 +289,12 @@ class ServidorCentral():
 
     #  Registrar cuantas veces se ha caido un servidor de desccarga
     def registrarServidoresCaidos(self, direccion):
+        """ Metodo que permite registrar servidores caidos
+
+        Este metodo recibe la direccion ip del servidor. Este metodo guardara en un .json los datos solicitados,
+        actualizados si ya se encontraba registro de alguna caida o un nuevo registro del mismo si no existia dato alguno
+        del servidor
+        """
         match = False
         match2 = False
         cont = 0
@@ -295,6 +328,15 @@ class ServidorCentral():
 
 # Consola del Servidor Central
 def consolaServidorCentral(s, yo):
+    """ Menu de opciones del servidor Central
+
+    Este metodo recibira una intancia propia que permitira apagar el servidor cuando sea solicitado y una instancia
+    de un objeto de tipo Servidor
+
+    Este metodo contendra todas las opciones que puede llevar a cabo el servidor central, entre estos:
+    estadisticas de los libros descargados por servidor, estadisticas de los clientes atendidos y estadisticas
+    de los servidores caidos
+    """
     terminar = False
     while not (terminar):
         print("\n1) LibrosDescargadosxServidor \n2) Nro. De clientes atendidos \n3) Servidores Caídos \n0) Salir")
@@ -313,6 +355,11 @@ def consolaServidorCentral(s, yo):
 
 # Crea los archivos del servidor
 def crearArchivos():
+    """ Metodo que premite la creacion de los .json
+
+    Este metodo creara los .json del servidor central que mantendra de manera permanente
+    las estadisticas del servidor central
+    """
     # Base de datos de los clientes
     with open('inscripciones.json', 'a+') as f:
         if os.stat('inscripciones.json').st_size == 0:
@@ -363,15 +410,14 @@ if __name__ == '__main__':
 
     crearArchivos()
 
-    server.register_instance(ServidorCentral())
-    #server.register_introspection_functions()
+    server.register_instance(ServidorCentral()) # Metodos que ofrecere como servidor a mis clientes
 
-    s = ServidorCentral()
-    t = threading.Thread(target=consolaServidorCentral, args=([s, server]))
-    t.start()
+    s = ServidorCentral() 
+    t = threading.Thread(target=consolaServidorCentral, args=([s, server])) #Creacion del hilo
+    t.start() #Inicio del hilo
 
     try:
-        server.serve_forever()
+        server.serve_forever() #Ciclo infinito del hilo
     except KeyboardInterrupt:
         print('Saliendo')
     

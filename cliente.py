@@ -1,9 +1,9 @@
 """
     cliente.py
 
-    Fecha: /04/2018
+    Fecha: 12/04/2018
     Autores: Andres Buelvas     13-10184
-             Salvador         
+             Salvador Covelo    10-10164    
     Materia: CI-4835 Redes De Computadoras I
     Proyecto #2: Cliente-Servidor
 """
@@ -35,7 +35,7 @@ class Cliente():
     def conectar_servidores_descarga(self, ip):
         """ Metodo que permite conectarse con servidores de descarga
 
-        Este metodo debe recibe una direccion junto a su puerto (ej 127.0.0.1:8000). Este
+        Este metodo recibe una direccion junto a su puerto (ej 127.0.0.1:8000). Este
         metodo intentara conectarse al servidor de descarga, si esto ocurre, entonces se 
         retorna una intancia del servidor de descarga.
         """

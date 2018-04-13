@@ -1,9 +1,9 @@
 """
     servidorDescarga.py
 
-    Fecha: /04/2018
+    Fecha: 12/04/2018
     Autores: Andres Buelvas     13-10184
-             Salvador         
+             Salvador Covelo    10-10164  
     Materia: CI-4835 Redes De Computadoras I
     Proyecto #2: Cliente-Servidor
 """
@@ -290,7 +290,6 @@ def conectar(ip):
 if __name__ == '__main__':
 
     puerto = 8000
-    #ip_server = datosDelServidor()
     ip = input("Introduce la direccion ip publica del servidor de descarga: ")
     ip_server = input("Introduzca la direccion ip publica del servidor central: ")
     instancia = conectar('http://'+str(ip_server)+":"+str(puerto)) # Me comporto como cliente y me conecto con el servidor central
